@@ -151,6 +151,7 @@ Run state is durable in `crawl_runs` and `crawl_urls`:
 - **No JavaScript execution** — static HTML link extraction only.
 - **Best-effort media metadata** — enough to demonstrate processor extensibility without shipping FFmpeg.
 - **Polling workers** instead of `LISTEN/NOTIFY` — simpler and sufficient for the assignment scope.
+- **Optional local Fetch API mock** — not required by the brief; added as a separate `mock-fetch-api` container for realistic manual testing while keeping the crawler's default pointed at the assignment black-box URL.
 
 ## 10. Production evolution
 

@@ -58,6 +58,17 @@ Concurrent workers lease rows with `FOR UPDATE SKIP LOCKED`. Every lease has a u
 
 See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the full design baseline and [`INTERVIEW_DEFENSE.md`](INTERVIEW_DEFENSE.md) for interview talking points.
 
+## Key decisions
+
+| Decision | Why |
+|---|---|
+| PostgreSQL frontier | One durable owner for identity, leases, retries, and crawl history |
+| Lease fencing | Prevents stale workers from committing after crash or lease reclaim |
+| Replay-safe fetch | External HTTP and DB commit cannot be atomic; retries are explicit |
+| MIME-based processors | Adding a fifth content type is one class + DI registration |
+| Content-addressed artifacts | Collision-safe storage under `output/html\|images\|videos\|pdfs` |
+| Optional `mock-fetch-api` | The brief treats Fetch API as a given black box and does not require implementing it. A small companion HTTP service was added anyway so reviewers and I can run a **full real crawl locally** — real `HttpClient`, all four content types, link discovery, artifacts on disk, and PostgreSQL state — without depending on a live `mock-api.mock.com`. It is opt-in (`docker compose` + `--fetch-api`), kept outside the crawler projects, and the default remains the assignment endpoint. Automated tests still use `InMemoryFetchApiClient`; the Docker mock closes the gap for manual end-to-end verification and demo. |
+
 ## Correctness guarantees
 
 The crawler guarantees one canonical URL identity per crawl run, one valid active lease, fenced finalization, and idempotent replay. It does **not** claim strict exactly-once HTTP fetching because an external request and PostgreSQL commit cannot be atomic. A fetch may repeat after a transient failure or process crash without creating a duplicate logical URL.
