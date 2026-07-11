@@ -1,4 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\BrightCrawler.Core\BrightCrawler.Core.csproj" />
     <ProjectReference Include="..\BrightCrawler.Infrastructure\BrightCrawler.Infrastructure.csproj" />
