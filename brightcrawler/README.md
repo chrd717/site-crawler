@@ -10,6 +10,7 @@ Production-grade site crawler built as a pragmatic clean modular monolith on .NE
 - Content is dispatched by MIME type through an `IContentProcessor` registry.
 
 See `../brightcrawler-architecture-v2/ARCHITECTURE.md` for the full design baseline.
+For interview talking points, see [`INTERVIEW_DEFENSE.md`](INTERVIEW_DEFENSE.md).
 
 ## Prerequisites
 
@@ -18,6 +19,8 @@ See `../brightcrawler-architecture-v2/ARCHITECTURE.md` for the full design basel
 
 ## Quick start
 
+**Local development** — database in Docker, crawler on the host:
+
 ```bash
 docker compose up -d postgres
 dotnet run --project src/BrightCrawler.App -- init-db
@@ -25,11 +28,13 @@ dotnet run --project src/BrightCrawler.App -- crawl https://example.com
 dotnet run --project src/BrightCrawler.App -- status <run-id>
 ```
 
-Or run the full stack:
+**Full stack** — database and crawler in containers:
 
 ```bash
-docker compose up --build
+docker compose --profile full up --build
 ```
+
+The `postgres` service starts by default; the `crawler` service is behind the `full` profile so day-to-day dev does not require rebuilding the app image.
 
 ## Key decisions
 

@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_DB: brightcrawler
       POSTGRES_USER: crawler
@@ -16,6 +17,7 @@ services:
       retries: 10
 
   crawler:
+    profiles: ["full"]
     build: .
     depends_on:
       postgres:
