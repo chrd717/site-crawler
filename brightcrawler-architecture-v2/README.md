@@ -8,7 +8,8 @@ This package is the updated architecture baseline for the C# crawler take-home.
 2. [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) — risk-first one-day delivery order.
 3. [`PROJECT_TEMPLATE.md`](PROJECT_TEMPLATE.md) — solution/projects/dependency template.
 4. [`README-outline.md`](README-outline.md) — concise repository README draft.
-5. [`INTERVIEW_DEFENSE_RU.md`](INTERVIEW_DEFENSE_RU.md) — Russian talking points for the design review.
+
+Design decisions for the implemented solution: [`../brightcrawler/DESIGN_DECISIONS.md`](../brightcrawler/DESIGN_DECISIONS.md).
 
 ## Supporting material
 

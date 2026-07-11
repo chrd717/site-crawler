@@ -56,7 +56,7 @@ PostgreSQL is the **durable crawl frontier**: it registers canonical URLs, preve
 
 Concurrent workers lease rows with `FOR UPDATE SKIP LOCKED`. Every lease has a unique token; completion and retry updates compare that token so a stale worker cannot commit after its lease is reclaimed.
 
-See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the full design baseline and [`INTERVIEW_DEFENSE.md`](INTERVIEW_DEFENSE.md) for interview talking points.
+See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the full design baseline and [`DESIGN_DECISIONS.md`](DESIGN_DECISIONS.md) for key decisions, rejected alternatives, and production-scale evolution.
 
 ## Key decisions
 

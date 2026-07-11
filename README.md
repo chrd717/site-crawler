@@ -44,4 +44,4 @@ For setup details, architecture, trade-offs, and tests, see [`brightcrawler/READ
 
 1. [`brightcrawler/README.md`](brightcrawler/README.md) — how to run, design summary, limitations
 2. [`brightcrawler/ARCHITECTURE.md`](brightcrawler/ARCHITECTURE.md) — frontier, leases, resumability, content processing
-3. [`brightcrawler/INTERVIEW_DEFENSE.md`](brightcrawler/INTERVIEW_DEFENSE.md) — talking points for design review
+3. [`brightcrawler/DESIGN_DECISIONS.md`](brightcrawler/DESIGN_DECISIONS.md) — key architectural decisions, rejected alternatives, and production-scale evolution
