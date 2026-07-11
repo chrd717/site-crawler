@@ -9,22 +9,34 @@ A resumable concurrent site crawler written in C#/.NET 10. It consumes the provi
 
 ## Run
 
-**Local development** — database in Docker, crawler on the host:
+Default Fetch API URL: `http://mock-api.mock.com` (`appsettings.json` → `Crawl:FetchApiBaseUrl`).  
+Override per run with `--fetch-api <url>` on `crawl` and `resume`.
+
+### Option A — assignment endpoint (no `--fetch-api`)
+
+Uses `http://mock-api.mock.com` as specified in the take-home brief. Requires a live Fetch API provided by the reviewer.
 
 ```bash
 docker compose up -d postgres
 dotnet run --project src/BrightCrawler.App -- init-db
 dotnet run --project src/BrightCrawler.App -- crawl https://example.com
-```
-
-Resume or inspect a run:
-
-```bash
 dotnet run --project src/BrightCrawler.App -- resume <run-id>
 dotnet run --project src/BrightCrawler.App -- status <run-id>
 ```
 
-Press `Ctrl+C` during a crawl to pause gracefully; the run is persisted as `paused` and can be resumed later.
+### Option B — local demo mock (`--fetch-api http://localhost:18080`)
+
+Uses the bundled `mock-fetch-api` service from `docker-compose.yml`. Serves a small in-scope `example.com` graph (HTML, image, video, PDF) on port **18080**.
+
+```bash
+docker compose up -d postgres mock-fetch-api
+dotnet run --project src/BrightCrawler.App -- init-db
+dotnet run --project src/BrightCrawler.App -- crawl https://example.com --fetch-api http://localhost:18080
+dotnet run --project src/BrightCrawler.App -- resume <run-id> --fetch-api http://localhost:18080
+dotnet run --project src/BrightCrawler.App -- status <run-id>
+```
+
+Press `Ctrl+C` during a crawl to pause gracefully; the run is persisted as `paused` and can be resumed later (use the same `--fetch-api` value as the original crawl when resuming a demo run).
 
 **Full stack** — database and crawler in containers:
 

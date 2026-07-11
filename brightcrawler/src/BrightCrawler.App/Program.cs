@@ -38,8 +38,8 @@ internal static class Program
     {
         Console.Error.WriteLine("""
             BrightCrawler commands:
-              crawl <seed-url> [--workers N] [--output path]
-              resume <run-id> [--workers N] [--output path]
+              crawl <seed-url> [--workers N] [--output path] [--fetch-api url]
+              resume <run-id> [--workers N] [--output path] [--fetch-api url]
               status <run-id>
               init-db
             """);
@@ -67,7 +67,8 @@ internal static class Program
         var options = baseOptions with
         {
             MaxConcurrency = ParseIntFlag(args, "--workers", baseOptions.MaxConcurrency),
-            OutputRoot = ParseStringFlag(args, "--output", baseOptions.OutputRoot)
+            OutputRoot = ParseStringFlag(args, "--output", baseOptions.OutputRoot),
+            FetchApiBaseUrl = ParseStringFlag(args, "--fetch-api", baseOptions.FetchApiBaseUrl)
         };
 
         var definition = new CrawlRunDefinition
@@ -118,7 +119,8 @@ internal static class Program
         var options = baseOptions with
         {
             MaxConcurrency = ParseIntFlag(args, "--workers", baseOptions.MaxConcurrency),
-            OutputRoot = ParseStringFlag(args, "--output", baseOptions.OutputRoot)
+            OutputRoot = ParseStringFlag(args, "--output", baseOptions.OutputRoot),
+            FetchApiBaseUrl = ParseStringFlag(args, "--fetch-api", baseOptions.FetchApiBaseUrl)
         };
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -219,8 +221,11 @@ internal static class Program
             ProcessingTimeout = TimeSpan.FromSeconds(crawlSection.GetValue("ProcessingTimeoutSeconds", 120)),
             LeaseDuration = TimeSpan.FromMinutes(crawlSection.GetValue("LeaseDurationMinutes", 5)),
             OutputRoot = crawlSection.GetValue("OutputRoot", "output") ?? "output",
-            FetchApiBaseUrl = crawlSection.GetValue("FetchApiBaseUrl", "http://mock-api.mock.com")
-                ?? "http://mock-api.mock.com"
+            FetchApiBaseUrl = ParseStringFlag(
+                args,
+                "--fetch-api",
+                crawlSection.GetValue("FetchApiBaseUrl", "http://mock-api.mock.com")
+                    ?? "http://mock-api.mock.com")
         };
 
         builder.Services.AddBrightCrawlerInfrastructure(connectionString, options);

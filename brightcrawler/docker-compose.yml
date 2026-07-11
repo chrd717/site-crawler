@@ -16,14 +16,28 @@ services:
       timeout: 5s
       retries: 10
 
+  mock-fetch-api:
+    build: ./mock-fetch-api
+    restart: unless-stopped
+    ports:
+      - "18080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   crawler:
     profiles: ["full"]
     build: .
     depends_on:
       postgres:
         condition: service_healthy
+      mock-fetch-api:
+        condition: service_healthy
     environment:
       ConnectionStrings__CrawlDb: Host=postgres;Port=5432;Database=brightcrawler;Username=crawler;Password=crawler
+      Crawl__FetchApiBaseUrl: http://mock-fetch-api:8080
     volumes:
       - ./output:/app/output
     command: ["crawl", "https://example.com"]
