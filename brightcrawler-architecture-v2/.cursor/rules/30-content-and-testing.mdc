@@ -1,0 +1,28 @@
+---
+description: Content processor extensibility, persistence tests, and pull-request quality rules
+alwaysApply: true
+---
+
+# Content processing
+
+- Select processors from normalized response `Content-Type`, never URL extension.
+- A new content type must be implemented as one `IContentProcessor` plus DI registration and tests.
+- Do not add content-type switches to `UrlProcessingPipeline`.
+- Store common searchable metadata in typed columns and processor-specific metadata in JSONB.
+- Treat `Content-Length` as declared metadata; actual body length is authoritative.
+- Artifact paths must be deterministic, content-addressed, and below the configured output root.
+- Write to a temporary file and atomically move to the final path.
+
+# Testing
+
+- Unit-test pure policies with table-driven cases.
+- Use real PostgreSQL/Testcontainers for unique constraints, transactions, `SKIP LOCKED`, and stale-lease tests; do not mock lock behavior.
+- Avoid real sleeps. Control time through `TimeProvider` or a test implementation.
+- Include tests for duplicate discovery, concurrent leasing, expired lease recovery, stale token rejection, `429`, cycles, cross-host references, and misleading extensions.
+- Every bug fix must add a regression test when practical.
+
+# Change quality
+
+- Keep commits focused and buildable.
+- Before completion run formatting, build with warnings as errors, unit tests, integration tests, and a clean Compose smoke test.
+- Update README/ADR when a dependency, state transition, persistence guarantee, or deliberate omission changes.

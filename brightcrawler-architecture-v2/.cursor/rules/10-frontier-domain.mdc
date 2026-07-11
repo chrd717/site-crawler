@@ -1,0 +1,36 @@
+---
+description: Crawl frontier, URL identity, leases, retries, and completion semantics
+alwaysApply: true
+---
+
+# Terminology
+
+- Use `Crawl Frontier`, `FrontierEntry`, `FrontierLease`, `FrontierState`, and `PostgresCrawlFrontier` in domain code.
+- Do not name the component `QueueService`, `CrawlerRepository`, or `ICrawlStore`.
+- The active frontier consists of Pending, Leased, and RetryScheduled entries. Terminal records remain as the crawl ledger.
+- `available_at` means the entry is not eligible before that time; do not use a retry-only name for this general scheduling field.
+
+# Source of truth
+
+- PostgreSQL is the only source of truth for URL identity, frontier state, leases, attempts, and retries.
+- Never use `ConcurrentDictionary`, `HashSet`, `Channel`, or an in-memory queue as the visited/frontier authority.
+- A canonical URL must be unique per crawl run through a database constraint.
+- Workers must lease entries atomically with explicit PostgreSQL SQL and `FOR UPDATE SKIP LOCKED`.
+
+# Lease fencing
+
+- Every leased entry has `lease_token`, `lease_owner`, and `lease_until`.
+- Every success, redirect, retry, or terminal completion must compare the current lease token.
+- Treat an update affecting zero rows as a lost/stale lease.
+- A stale worker may not mutate frontier state after its lease expires.
+- Do not claim strict exactly-once external fetching. Preserve unique logical identity, exclusive active ownership, and replay-safe side effects.
+
+# State transitions
+
+- Expected HTTP statuses are values, not exceptions.
+- Retries are durable frontier transitions; never add hidden `HttpClient` or Polly retries.
+- `403` and `404` are terminal.
+- `429` must parse `Retry-After`, persist `available_at`, and update shared cooldown.
+- `5xx` and transient transport failures use bounded backoff with jitter and an attempt limit.
+- A successful HTML transaction must atomically finalize the source entry and register discovered URLs/edges.
+- Clearing a lease must clear token, owner, and expiry together.

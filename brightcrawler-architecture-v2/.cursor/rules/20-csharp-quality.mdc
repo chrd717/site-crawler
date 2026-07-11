@@ -1,0 +1,33 @@
+---
+description: C# implementation, error handling, async, naming, and logging rules
+alwaysApply: true
+---
+
+# C# baseline
+
+- Target the pinned .NET 10 SDK without preview language features.
+- Keep nullable reference types enabled and fix warnings instead of suppressing them globally.
+- Prefer small immutable records/value objects for IDs, leases, outcomes, and policy results.
+- Use explicit names: `TryLeaseNextAsync`, `ScheduleRetryAsync`, `CompleteTerminalAsync`; avoid `Handle`, `ProcessData`, and `Manager` without a precise domain meaning.
+- Do not create interfaces with only one in-memory implementation unless they represent a real external boundary.
+
+# Async and cancellation
+
+- Use async I/O end to end.
+- Never use `.Result`, `.Wait()`, `async void`, or fire-and-forget tasks.
+- Every I/O method accepts and passes a `CancellationToken`.
+- Use `TimeProvider` for current time and delay behavior that must be testable.
+- Bound fetch and processing operations with explicit timeouts.
+
+# Errors and outcomes
+
+- Model expected fetch/status outcomes as typed values.
+- Throw for violated invariants, malformed internal state, or unexpected infrastructure failures.
+- Map external failures to stable error codes; truncate untrusted error text before persistence/logging.
+- Never log response bodies, secrets, credentials, or full stack traces for expected outcomes.
+
+# Logging
+
+- Use structured message templates and stable event names.
+- Include crawl run ID, frontier entry ID, worker ID, attempt number, state/outcome, and duration where relevant.
+- Do not concatenate log strings or log the same failure at multiple layers.

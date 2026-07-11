@@ -1,0 +1,21 @@
+---
+description: Lean architecture and dependency rules
+alwaysApply: true
+---
+
+# Architecture
+
+- Keep exactly three production projects unless a concrete deployment boundary appears: App, Core, Infrastructure.
+- Core must not reference App or Infrastructure.
+- App is the only composition root; keep `Program.cs` and DI registration thin.
+- Add a package, service, project, interface, base class, or pattern only for a concrete requirement; record non-obvious decisions in README/ADR.
+- Do not introduce MediatR, AutoMapper, CQRS, event sourcing, a generic repository, Redis, RabbitMQ, Kafka, or an in-memory work frontier.
+- Prefer concrete internal classes. Create interfaces only at external boundaries or where the assignment explicitly requires polymorphic extension.
+- Never place business/crawl policy in controllers, `Program.cs`, SQL mapping code, or content parser adapters.
+
+# Dependency direction
+
+- `BrightCrawler.Core` owns ports and workflow semantics.
+- `BrightCrawler.Infrastructure` implements Core ports.
+- Infrastructure-specific types (`Npgsql*`, `HttpClient`, parser-library models, filesystem paths) must not leak into Core contracts.
+- Do not create generic `Common`, `Shared`, `Helpers`, or `Services` dumping-ground folders.
