@@ -7,7 +7,7 @@ Senior take-home: a production-grade site crawler for the Fetch API described in
 | Path | Purpose |
 |---|---|
 | [`brightcrawler/`](brightcrawler/) | **Submission** — runnable .NET 10 implementation |
-| [`brightcrawler-architecture-v2/`](brightcrawler-architecture-v2/) | Architecture notes and interview prep (design baseline) |
+| [`brightcrawler-architecture-v2/`](brightcrawler-architecture-v2/) | Design process and architecture baseline |
 | [`senior_assignment.md`](senior_assignment.md) | Original assignment brief |
 
 ## Quick start
