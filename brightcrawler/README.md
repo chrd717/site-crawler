@@ -52,7 +52,13 @@ The `postgres` service starts by default; the `crawler` service is behind the `f
 dotnet test BrightCrawler.sln
 ```
 
-Integration tests use Testcontainers for PostgreSQL.
+| Layer | What it proves |
+|---|---|
+| Unit | Canonicalization, scope, `Retry-After` parsing |
+| Integration (frontier) | PostgreSQL leases, stale token rejection |
+| E2E + `InMemoryFetchApiClient` | Full crawl pipeline, DB state, artifacts |
+
+E2E scenarios: cyclic graph `A→B→C→A`, duplicate link dedup, `429→200` retry, MIME-based PDF dispatch.
 
 ## Production evolution
 
