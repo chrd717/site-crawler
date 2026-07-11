@@ -8,6 +8,14 @@ public interface ICrawlFrontier
         CrawlRunDefinition definition,
         CancellationToken cancellationToken);
 
+    Task<CrawlRunInfo?> GetRunAsync(
+        CrawlRunId runId,
+        CancellationToken cancellationToken);
+
+    Task<bool> PrepareResumeAsync(
+        CrawlRunId runId,
+        CancellationToken cancellationToken);
+
     Task<FrontierLease?> TryLeaseNextAsync(
         CrawlRunId runId,
         string workerId,

@@ -57,9 +57,15 @@ public sealed class CrawlBudget
 
     public void SeedReserved()
     {
+        InitializeFromRun(knownUrlCount: 1, downloadedBytes: 0);
+    }
+
+    public void InitializeFromRun(int knownUrlCount, long downloadedBytes)
+    {
         lock (_lock)
         {
-            _knownUrls = 1;
+            _knownUrls = knownUrlCount;
+            _downloadedBytes = downloadedBytes;
         }
     }
 }

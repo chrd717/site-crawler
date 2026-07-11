@@ -26,6 +26,54 @@ public class PostgresCrawlFrontierTests : IAsyncLifetime
     public Task DisposeAsync() => _postgres.DisposeAsync().AsTask();
 
     [Fact]
+    public async Task GetRunAsync_RoundTripsStoredOptionsAndCounters()
+    {
+        var frontier = new PostgresCrawlFrontier(_connectionString);
+        var options = new CrawlOptions
+        {
+            MaxConcurrency = 2,
+            MaxUrls = 42,
+            OutputRoot = "custom-output"
+        };
+        var runId = await frontier.CreateRunAsync(new CrawlRunDefinition
+        {
+            SeedUrl = "https://example.com/",
+            EffectiveHost = "example.com",
+            Options = options
+        }, CancellationToken.None);
+
+        var info = await frontier.GetRunAsync(runId, CancellationToken.None);
+
+        Assert.NotNull(info);
+        Assert.Equal(CrawlRunState.Running, info.State);
+        Assert.Equal("https://example.com/", info.Definition.SeedUrl);
+        Assert.Equal(2, info.Definition.Options.MaxConcurrency);
+        Assert.Equal(42, info.Definition.Options.MaxUrls);
+        Assert.Equal("custom-output", info.Definition.Options.OutputRoot);
+        Assert.Equal(0, info.KnownUrlCount);
+        Assert.Equal(0, info.DownloadedBytes);
+    }
+
+    [Fact]
+    public async Task PrepareResumeAsync_ReopensPausedRun()
+    {
+        var frontier = new PostgresCrawlFrontier(_connectionString);
+        var runId = await frontier.CreateRunAsync(new CrawlRunDefinition
+        {
+            SeedUrl = "https://example.com/",
+            EffectiveHost = "example.com",
+            Options = new CrawlOptions()
+        }, CancellationToken.None);
+
+        await frontier.MarkRunCompletedAsync(runId, CrawlRunState.Paused, "user cancel", CancellationToken.None);
+
+        Assert.True(await frontier.PrepareResumeAsync(runId, CancellationToken.None));
+
+        var info = await frontier.GetRunAsync(runId, CancellationToken.None);
+        Assert.Equal(CrawlRunState.Running, info!.State);
+    }
+
+    [Fact]
     public async Task ConcurrentLeasesReturnDistinctEntries()
     {
         var frontier = new PostgresCrawlFrontier(_connectionString);

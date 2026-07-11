@@ -1,4 +1,5 @@
 using BrightCrawler.Core.Frontier;
+using BrightCrawler.Core.Policies;
 using BrightCrawler.Core.Runs;
 using BrightCrawler.Infrastructure.Fetching;
 using BrightCrawler.Infrastructure.Persistence;
@@ -184,6 +185,64 @@ public sealed class CrawlE2ETests : IClassFixture<CrawlE2ETestHost>
         {
             TryDeleteDirectory(outputDir);
         }
+    }
+
+    [Fact]
+    public async Task PausedRun_CanResumeAndCompleteRemainingWork()
+    {
+        const string seed = "https://example.com/";
+        const string child = "https://example.com/child";
+
+        var frontier = new PostgresCrawlFrontier(_host.ConnectionString);
+        var runId = await frontier.CreateRunAsync(
+            new CrawlRunDefinition
+            {
+                SeedUrl = seed,
+                EffectiveHost = "example.com",
+                Options = new CrawlOptions { MaxConcurrency = 1 }
+            },
+            CancellationToken.None);
+
+        var lease = await frontier.TryLeaseNextAsync(
+            runId, "w1", TimeSpan.FromMinutes(1), CancellationToken.None)
+            ?? throw new InvalidOperationException("Expected seed lease");
+
+        await frontier.CompleteSuccessAsync(
+            lease,
+            new CrawlCompletion
+            {
+                HttpStatus = 200,
+                MediaType = "text/html",
+                ActualLength = 10,
+                ContentSha256 = new byte[32],
+                ArtifactPath = "html/ab/seed.html",
+                MetadataJson = "{}"
+            },
+            [
+                new UrlDiscovery
+                {
+                    CanonicalUrl = child,
+                    CanonicalUrlHash = UrlCanonicalizer.TryCanonicalize(child, out _, out var hash) ? hash : [],
+                    FirstSeenUrl = child,
+                    Depth = 1,
+                    RelationKind = "a[href]",
+                    RawReference = "/child"
+                }
+            ],
+            CancellationToken.None);
+
+        await frontier.MarkRunCompletedAsync(runId, CrawlRunState.Paused, "test pause", CancellationToken.None);
+
+        await _host.ResumeCrawlAsync(
+            runId,
+            fetch =>
+            {
+                fetch.Register(child, () => TestContent.Html(TestContent.HtmlPage("Child")));
+            });
+
+        var snapshot = await frontier.GetSnapshotAsync(runId, CancellationToken.None);
+        Assert.True(snapshot.IsComplete);
+        Assert.Equal(2, snapshot.TerminalCount);
     }
 
     private static void TryDeleteDirectory(string path)

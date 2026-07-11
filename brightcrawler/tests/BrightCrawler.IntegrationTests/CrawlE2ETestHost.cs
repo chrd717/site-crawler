@@ -70,4 +70,25 @@ public sealed class CrawlE2ETestHost : IAsyncLifetime
         var runId = await coordinator.RunAsync(definition, cancellationToken);
         return (runId, outputDir, fetch);
     }
+
+    public async Task<CrawlRunId> ResumeCrawlAsync(
+        CrawlRunId runId,
+        Action<InMemoryFetchApiClient> configureFetch,
+        CancellationToken cancellationToken = default)
+    {
+        var frontier = new PostgresCrawlFrontier(_connectionString);
+        var info = await frontier.GetRunAsync(runId, cancellationToken)
+            ?? throw new InvalidOperationException($"Run {runId} was not found.");
+
+        var services = new ServiceCollection();
+        services.AddLogging(builder => builder.SetMinimumLevel(LogLevel.Warning));
+        services.AddBrightCrawlerInfrastructure(_connectionString, info.Definition.Options, useInMemoryFetch: true);
+
+        await using var provider = services.BuildServiceProvider();
+        var fetch = provider.GetRequiredService<InMemoryFetchApiClient>();
+        configureFetch(fetch);
+
+        var coordinator = provider.GetRequiredService<CrawlCoordinator>();
+        return await coordinator.ResumeAsync(runId, optionsOverride: null, cancellationToken);
+    }
 }

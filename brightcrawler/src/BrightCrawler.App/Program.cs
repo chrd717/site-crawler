@@ -27,6 +27,7 @@ internal static class Program
         return command switch
         {
             "crawl" => await RunCrawlAsync(host.Services, args, cancellationToken: default),
+            "resume" => await RunResumeAsync(host.Services, args, cancellationToken: default),
             "status" => await RunStatusAsync(host.Services, args),
             "init-db" => await InitDbAsync(host.Services),
             _ => PrintUsage()
@@ -38,6 +39,7 @@ internal static class Program
         Console.Error.WriteLine("""
             BrightCrawler commands:
               crawl <seed-url> [--workers N] [--output path]
+              resume <run-id> [--workers N] [--output path]
               status <run-id>
               init-db
             """);
@@ -92,6 +94,59 @@ internal static class Program
         return 0;
     }
 
+    private static async Task<int> RunResumeAsync(
+        IServiceProvider services,
+        string[] args,
+        CancellationToken cancellationToken)
+    {
+        if (args.Length < 2 || !Guid.TryParse(args[1], out var runGuid))
+        {
+            Console.Error.WriteLine("Usage: resume <run-id> [--workers N] [--output path]");
+            return 1;
+        }
+
+        var runId = new CrawlRunId(runGuid);
+        var frontier = services.GetRequiredService<ICrawlFrontier>();
+        var info = await frontier.GetRunAsync(runId, CancellationToken.None);
+        if (info is null)
+        {
+            Console.Error.WriteLine($"Crawl run {runId} was not found.");
+            return 1;
+        }
+
+        var baseOptions = info.Definition.Options;
+        var options = baseOptions with
+        {
+            MaxConcurrency = ParseIntFlag(args, "--workers", baseOptions.MaxConcurrency),
+            OutputRoot = ParseStringFlag(args, "--output", baseOptions.OutputRoot)
+        };
+
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        Console.CancelKeyPress += (_, eventArgs) =>
+        {
+            eventArgs.Cancel = true;
+            cts.Cancel();
+        };
+
+        var initializer = services.GetRequiredService<DatabaseInitializer>();
+        await initializer.InitializeAsync(cts.Token);
+
+        try
+        {
+            var coordinator = services.GetRequiredService<CrawlCoordinator>();
+            var optionsOverride = options.Equals(baseOptions) ? null : options;
+            await coordinator.ResumeAsync(runId, optionsOverride, cts.Token);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Console.Error.WriteLine(ex.Message);
+            return 1;
+        }
+
+        Console.WriteLine($"Crawl resumed and finished. Run id: {runId}");
+        return 0;
+    }
+
     private static async Task<int> RunStatusAsync(IServiceProvider services, string[] args)
     {
         if (args.Length < 2 || !Guid.TryParse(args[1], out var runGuid))
@@ -101,12 +156,34 @@ internal static class Program
         }
 
         var frontier = services.GetRequiredService<ICrawlFrontier>();
-        var snapshot = await frontier.GetSnapshotAsync(new CrawlRunId(runGuid), CancellationToken.None);
+        var runId = new CrawlRunId(runGuid);
+        var info = await frontier.GetRunAsync(runId, CancellationToken.None);
+        if (info is null)
+        {
+            Console.Error.WriteLine($"Crawl run {runId} was not found.");
+            return 1;
+        }
 
+        var snapshot = await frontier.GetSnapshotAsync(runId, CancellationToken.None);
+
+        Console.WriteLine($"State: {info.State}");
+        Console.WriteLine($"Seed: {info.Definition.SeedUrl}");
+        Console.WriteLine($"Known URLs: {info.KnownUrlCount}");
+        Console.WriteLine($"Downloaded bytes: {info.DownloadedBytes}");
         Console.WriteLine($"Pending: {snapshot.PendingCount}");
         Console.WriteLine($"Leased: {snapshot.LeasedCount}");
         Console.WriteLine($"Retry scheduled: {snapshot.RetryScheduledCount}");
         Console.WriteLine($"Terminal: {snapshot.TerminalCount}");
+        if (snapshot.NextAvailableAt is not null)
+        {
+            Console.WriteLine($"Next retry at: {snapshot.NextAvailableAt:O}");
+        }
+
+        if (snapshot.OldestPendingAge is not null)
+        {
+            Console.WriteLine($"Oldest pending age: {snapshot.OldestPendingAge}");
+        }
+
         Console.WriteLine($"Complete: {snapshot.IsComplete}");
         return 0;
     }

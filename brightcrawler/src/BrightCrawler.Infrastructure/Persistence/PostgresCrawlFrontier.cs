@@ -65,6 +65,65 @@ public sealed class PostgresCrawlFrontier : ICrawlFrontier
         return runId;
     }
 
+    public async Task<CrawlRunInfo?> GetRunAsync(
+        CrawlRunId runId,
+        CancellationToken cancellationToken)
+    {
+        await using var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        await using var cmd = new NpgsqlCommand(
+            """
+            SELECT seed_url, effective_host, state, options_json, known_url_count, downloaded_bytes
+            FROM crawl_runs
+            WHERE id = @id
+            """, connection);
+        cmd.Parameters.AddWithValue("id", runId.Value);
+
+        await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+        {
+            return null;
+        }
+
+        var optionsJson = reader.GetString(3);
+        var options = JsonSerializer.Deserialize<CrawlOptions>(optionsJson)
+            ?? throw new InvalidOperationException($"Run {runId} has invalid options_json.");
+
+        return new CrawlRunInfo
+        {
+            RunId = runId,
+            Definition = new CrawlRunDefinition
+            {
+                SeedUrl = reader.GetString(0),
+                EffectiveHost = reader.GetString(1),
+                Options = options
+            },
+            State = ParseRunState(reader.GetString(2)),
+            KnownUrlCount = (int)reader.GetInt64(4),
+            DownloadedBytes = reader.GetInt64(5)
+        };
+    }
+
+    public async Task<bool> PrepareResumeAsync(
+        CrawlRunId runId,
+        CancellationToken cancellationToken)
+    {
+        await using var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        await using var cmd = new NpgsqlCommand(
+            """
+            UPDATE crawl_runs
+            SET state = 'running', completed_at = NULL, stop_reason = NULL
+            WHERE id = @id
+              AND state IN ('paused', 'running', 'completed_with_failures')
+            """, connection);
+        cmd.Parameters.AddWithValue("id", runId.Value);
+
+        return await cmd.ExecuteNonQueryAsync(cancellationToken) == 1;
+    }
+
     public async Task<FrontierLease?> TryLeaseNextAsync(
         CrawlRunId runId,
         string workerId,
@@ -764,6 +823,18 @@ public sealed class PostgresCrawlFrontier : ICrawlFrontier
         CrawlRunState.StoppedByBudget => "stopped_by_budget",
         CrawlRunState.Failed => "failed",
         _ => throw new ArgumentOutOfRangeException(nameof(state), state, null)
+    };
+
+    private static CrawlRunState ParseRunState(string state) => state switch
+    {
+        "created" => CrawlRunState.Created,
+        "running" => CrawlRunState.Running,
+        "paused" => CrawlRunState.Paused,
+        "completed" => CrawlRunState.Completed,
+        "completed_with_failures" => CrawlRunState.CompletedWithFailures,
+        "stopped_by_budget" => CrawlRunState.StoppedByBudget,
+        "failed" => CrawlRunState.Failed,
+        _ => throw new ArgumentOutOfRangeException(nameof(state), state, "Unknown crawl run state.")
     };
 
     private static string? Truncate(string? message, int max = 500) =>
